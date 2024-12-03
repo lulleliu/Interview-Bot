@@ -1,0 +1,6 @@
+jupyter
+langchain 
+langchain_openai 
+langchain-community 
+langchain-chroma
+langchain-huggingface
