@@ -75,6 +75,31 @@ def furhat_say(text_to_say):
             print("Response:", response.text)
     except requests.exceptions.RequestException as e:
         print("An error occurred:", e)
+
+def furhat_listen(language):
+    # Define the API base URL
+    BASE_URL = "http://localhost:54321/furhat/listen"
+
+    # Prepare the parameters
+    params = {
+        "language": language,
+        "blocking": True
+    }
+
+    try:
+        # Make the Get request
+        response = requests.get(BASE_URL, params=params)
+
+        # Check the response
+        if response.status_code == 200:
+            print("Furhat listened successfully.")
+            print("Response:", response.json())
+            return response.json()
+        else:
+            print(f"Failed to make Furhat listen. Status Code: {response.status_code}")
+            print("Response:", response.text)
+    except requests.exceptions.RequestException as e:
+        print("An error occurred:", e)
     
 
 def start_chatbot():
@@ -82,13 +107,14 @@ def start_chatbot():
     print("👋 Welcome! I'm your chatbot. Type 'exit' to end the chat.\n")
 
     while True:
-        user_input = input("You: ")
+        user_input = furhat_listen("en-US")
+        # user_input = input("You: ")
 
-        if user_input.lower() == 'exit':
+        if user_input["message"].lower() == 'exit':
             print("Goodbye! 👋")
             break
 
-        response = chat_with_openai(user_input)
+        response = chat_with_openai(user_input["message"])
         furhat_say(response)
         print(f"Bot: {response}\n")
 
