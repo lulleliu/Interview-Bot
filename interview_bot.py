@@ -10,18 +10,22 @@ import requests
 
 load_dotenv()
 
-client = openai.OpenAI()
-
-openai_api_key = os.getenv("OPENAI_API_KEY")
-openai.api_key = openai_api_key
-
+#openai_api_key = os.getenv("OPENAI_API_KEY")
+#openai.api_key = openai_api_key
 #print("key: " + openai_api_key)
+
+
+my_api_key=os.environ.get("OPENAI_API_KEY")
+print(my_api_key)
+
+
+client = openai.OpenAI(api_key=my_api_key)
 
 def chat_with_openai(user_input):
     completion = client.chat.completions.create(
         model="gpt-4o-mini",  # Use the GPT-4o-mini model
         messages=[
-            {"role": "system", "content": "You are a helpful assistant."},  # System message
+            {"role": "system", "content": "You are a helpful assistant. Provide concise answers. Also, you are are speaking so adapt your responses to spoken language. "},  # System message
             {"role": "user", "content": user_input},  # User input
         ]
     )
@@ -117,8 +121,6 @@ def start_chatbot():
         response = chat_with_openai(user_input["message"])
         furhat_say(response)
         print(f"Bot: {response}\n")
-
-
 
 if __name__ == "__main__":
     start_chatbot()
