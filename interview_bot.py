@@ -1,3 +1,17 @@
+from jupyter_chat import *
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain import hub
+from langchain_chroma import Chroma
+from langchain_community.document_loaders import WebBaseLoader
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+from langchain_openai import OpenAIEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_huggingface import HuggingFaceEmbeddings
+import bs4
+import re
+
 import openai
 from dotenv import load_dotenv
 import os
@@ -17,13 +31,51 @@ openai.api_key = openai_api_key
 
 #print("key: " + openai_api_key)
 
+# === RAG part begins ===
+
+# Load the document from a website
+loader = WebBaseLoader(
+    web_path="https://en.wikipedia.org/wiki/2024_United_States_presidential_election"
+)
+docs = loader.load()
+
+# Split the document into parts
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+splits = text_splitter.split_documents(docs)
+
+# Embed the parts and put them in a vectorstore
+embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+vectorstore = Chroma.from_documents(documents=splits, embedding=embeddings)
+retriever = vectorstore.as_retriever()
+
+# Define a function that combine a set of document parts into a string, also removing excessive whitespaces
+def documents_to_text(docs):
+    return "\n\n".join([re.sub(r'\s+', ' ', doc.page_content) for doc in docs])
+
+prompt_template = """You are a helpful assistant. You know the following information:
+
+-----
+{0}
+-----
+
+"""
+
+# === RAG part ends ===
+
 def chat_with_openai(user_input):
+    # get relevant documents via retriever
+    docs = retriever.get_relevant_documents(user_input)
+    information = documents_to_text(docs)
+    # integrate RAG information into system prompt
+    system_prompt = prompt_template.format(information)
+    
     completion = client.chat.completions.create(
         model="gpt-4o-mini",  # Use the GPT-4o-mini model
         messages=[
-            {"role": "system", "content": "You are a helpful assistant."},  # System message
+            {"role": "system", "content": system_prompt},  # System message
             {"role": "user", "content": user_input},  # User input
         ]
+        # to add temperature setting?
     )
 
     # Return the chatbot's reply
@@ -122,3 +174,4 @@ def start_chatbot():
 
 if __name__ == "__main__":
     start_chatbot()
+    
