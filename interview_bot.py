@@ -62,24 +62,30 @@ prompt_template = """You are a helpful assistant. You know the following informa
 
 # === RAG part ends ===
 
-def chat_with_openai(user_input):
+def chat_with_openai(user_input, history=[]):
     # get relevant documents via retriever
-    docs = retriever.get_relevant_documents(user_input)
+    docs = retriever.get_relevant_documents(user_input) #MODIFY SO THAT THE LATEST 3 MESSAGES ARE USED
     information = documents_to_text(docs)
     # integrate RAG information into system prompt
     system_prompt = prompt_template.format(information)
     
+    messages_list = []
+
+    messages_list.append({"role": "system", "content": system_prompt})
+    for i in history:
+        messages_list.append(i)
+    messages_list.append({"role": "user", "content": user_input})
+    history.append({"role": "user", "content": user_input})
+    print("MESSAGES LIST: " + str(messages_list))
+    
     completion = client.chat.completions.create(
         model="gpt-4o-mini",  # Use the GPT-4o-mini model
-        messages=[
-            {"role": "system", "content": system_prompt},  # System message
-            {"role": "user", "content": user_input},  # User input
-        ]
+        messages= messages_list
         # to add temperature setting?
     )
 
     # Return the chatbot's reply
-    return completion.choices[0].message.content
+    return completion.choices[0].message.content, history
 
 def get_posts():
     # Define the API endpoint URL
@@ -157,17 +163,21 @@ def furhat_listen(language):
 def start_chatbot():
 
     print("👋 Welcome! I'm your chatbot. Type 'exit' to end the chat.\n")
-
+    history = []
     while True:
-        user_input = furhat_listen("en-US")
-        # user_input = input("You: ")
+        #user_input = furhat_listen("en-US")
+        user_input = input("You: ")
 
-        if user_input["message"].lower() == 'exit':
+        #if user_input["message"].lower() == 'exit':
+        if user_input.lower() == 'exit':
             print("Goodbye! 👋")
             break
 
-        response = chat_with_openai(user_input["message"])
-        furhat_say(response)
+        #response = chat_with_openai(user_input["message"])
+        
+        response, history = chat_with_openai(user_input, history)
+        history.append({"role": "assistant", "content": response})
+        # furhat_say(response)
         print(f"Bot: {response}\n")
 
 
