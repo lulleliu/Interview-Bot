@@ -110,6 +110,8 @@ def start_chatbot():
 
     print("👋 Welcome! I'm your chatbot. Type 'exit' to end the chat.\n")
 
+    # Implement a starting interface, where user gets to input language, type of interview etc. And provide information about the role.
+
     while True:
         user_input = furhat_listen("en-US")
         # user_input = input("You: ")
@@ -121,6 +123,7 @@ def start_chatbot():
         response = chat_with_openai(user_input["message"])
         furhat_say(response)
         print(f"Bot: {response}\n")
+
 
 if __name__ == "__main__":
     start_chatbot()
