@@ -64,7 +64,11 @@ prompt_template = """You are a helpful assistant. You know the following informa
 
 def chat_with_openai(user_input, history=[]):
     # get relevant documents via retriever
-    docs = retriever.get_relevant_documents(user_input) #MODIFY SO THAT THE LATEST 3 MESSAGES ARE USED
+    messages_for_retriever = history[-2:]
+    messages_for_retriever.append({"role": "user", "content": user_input})
+    user_input_rag = " ".join([i["content"] for i in messages_for_retriever])
+    print("USER INPUT RAG: " + user_input_rag)
+    docs = retriever.get_relevant_documents(user_input_rag) # Now we use 2 of the users messages and one of the chatbots messages to get the relevant documents
     information = documents_to_text(docs)
     # integrate RAG information into system prompt
     system_prompt = prompt_template.format(information)
@@ -170,7 +174,10 @@ def start_chatbot():
 
         #if user_input["message"].lower() == 'exit':
         if user_input.lower() == 'exit':
-            print("Goodbye! 👋")
+            print("Goodbye! 👋\n")
+            interview = " ".join([i["content"] for i in history])
+            print(interview)
+
             break
 
         #response = chat_with_openai(user_input["message"])
