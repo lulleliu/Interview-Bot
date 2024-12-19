@@ -1,3 +1,17 @@
+from jupyter_chat import *
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain import hub
+from langchain_chroma import Chroma
+from langchain_community.document_loaders import WebBaseLoader
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+from langchain_openai import OpenAIEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_huggingface import HuggingFaceEmbeddings
+import bs4
+import re
+
 import openai
 from dotenv import load_dotenv
 import os
@@ -6,7 +20,6 @@ from typing_extensions import override
 from openai import AssistantEventHandler
 
 import requests
- 
 
 load_dotenv()
 
@@ -25,6 +38,9 @@ loader = WebBaseLoader(
 )
 docs = loader.load()
 
+# Split the document into parts
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+splits = text_splitter.split_documents(docs)
 
 client = openai.OpenAI(api_key=my_api_key)
 # Embed the parts and put them in a vectorstore
@@ -48,6 +64,7 @@ print(stored_data)
 
 vectorstore_test.reset_collection()
 
+
 vectorstore = Chroma.from_documents(documents=splits, embedding=embeddings)
 print("Vectorstore Data:")
 print(vectorstore._collection.get("embeddings"))
@@ -55,17 +72,46 @@ print(vectorstore._collection.get("embeddings"))
 
 retriever = vectorstore.as_retriever()
 
-def chat_with_openai(user_input):
+# Define a function that combine a set of document parts into a string, also removing excessive whitespaces
+def documents_to_text(docs):
+    return "\n\n".join([re.sub(r'\s+', ' ', doc.page_content) for doc in docs])
+
+prompt_template = """You are a helpful assistant. You know the following information:
+
+-----
+{0}
+-----
+
+"""
+
+def chat_with_openai(user_input, history=[]):
+    # get relevant documents via retriever
+    messages_for_retriever = history[-2:]
+    messages_for_retriever.append({"role": "user", "content": user_input})
+    user_input_rag = " ".join([i["content"] for i in messages_for_retriever])
+    print("USER INPUT RAG: " + user_input_rag)
+    docs = retriever.get_relevant_documents(user_input_rag) # Now we use 2 of the users messages and one of the chatbots messages to get the relevant documents
+    information = documents_to_text(docs)
+    # integrate RAG information into system prompt
+    system_prompt = prompt_template.format(information)
+    
+    messages_list = []
+
+    messages_list.append({"role": "system", "content": system_prompt})
+    for i in history:
+        messages_list.append(i)
+    messages_list.append({"role": "user", "content": user_input})
+    history.append({"role": "user", "content": user_input})
+    print("MESSAGES LIST: " + str(messages_list))
+    
     completion = client.chat.completions.create(
         model="gpt-4o-mini",  # Use the GPT-4o-mini model
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant. Provide concise answers. Also, you are are speaking so adapt your responses to spoken language. "},  # System message
-            {"role": "user", "content": user_input},  # User input
-        ]
+        messages= messages_list
+        # to add temperature setting?
     )
 
     # Return the chatbot's reply
-    return completion.choices[0].message.content
+    return completion.choices[0].message.content, history
 
 def get_posts():
     # Define the API endpoint URL
@@ -143,21 +189,28 @@ def furhat_listen(language):
 def start_chatbot():
 
     print("👋 Welcome! I'm your chatbot. Type 'exit' to end the chat.\n")
-
-    # Implement a starting interface, where user gets to input language, type of interview etc. And provide information about the role.
-
+    history = []
     while True:
-        user_input = furhat_listen("en-US")
-        # user_input = input("You: ")
+        #user_input = furhat_listen("en-US")
+        user_input = input("You: ")
 
-        if user_input["message"].lower() == 'exit':
-            print("Goodbye! 👋")
+        #if user_input["message"].lower() == 'exit':
+        if user_input.lower() == 'exit':
+            print("Goodbye! 👋\n")
+            interview = " ".join([i["content"] for i in history])
+            print(interview)
+
             break
 
-        response = chat_with_openai(user_input["message"])
-        furhat_say(response)
+        #response = chat_with_openai(user_input["message"])
+        
+        response, history = chat_with_openai(user_input, history)
+        history.append({"role": "assistant", "content": response})
+        # furhat_say(response)
         print(f"Bot: {response}\n")
+
 
 
 if __name__ == "__main__":
     start_chatbot()
+    
