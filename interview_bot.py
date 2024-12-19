@@ -15,11 +15,51 @@ load_dotenv()
 #print("key: " + openai_api_key)
 
 
+<<<<<<< Updated upstream
 my_api_key=os.environ.get("OPENAI_API_KEY")
 print(my_api_key)
+=======
+persist_directory = "./rag_data/data"
+
+# Load the document from a website
+loader = WebBaseLoader(
+    web_path="https://en.wikipedia.org/wiki/2024_United_States_presidential_election"
+)
+docs = loader.load()
+>>>>>>> Stashed changes
 
 
+<<<<<<< Updated upstream
 client = openai.OpenAI(api_key=my_api_key)
+=======
+# Embed the parts and put them in a vectorstore
+embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+
+vectorstore_test = Chroma(
+    collection_name="my_collection",  # Name of your collection
+    embedding_function=embeddings,
+    persist_directory=persist_directory)
+
+# Add your data to the vectorstore (if needed)
+texts = ["This is a sample text.", "Another piece of text."]
+metadata = [{"source": "doc1"}, {"source": "doc2"}]
+vectorstore_test.add_texts(texts=texts, metadatas=metadata)
+
+stored_data = vectorstore_test._collection.get()
+
+print(f"Data stored at: {persist_directory}")
+print("Stored Data:")
+print(stored_data)
+
+vectorstore_test.reset_collection()
+
+vectorstore = Chroma.from_documents(documents=splits, embedding=embeddings)
+print("Vectorstore Data:")
+print(vectorstore._collection.get("embeddings"))
+
+
+retriever = vectorstore.as_retriever()
+>>>>>>> Stashed changes
 
 def chat_with_openai(user_input):
     completion = client.chat.completions.create(
