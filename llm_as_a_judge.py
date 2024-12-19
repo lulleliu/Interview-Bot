@@ -94,8 +94,12 @@ This is the conversation between the interviewer and the interviewee you are gra
 
 def get_judge_response(interview):
     prompt = insert_into_prompt_template(interview)
-    response = client.chat(prompt)
-    return response
+    completion = client.chat.completions.create(
+        model="gpt-4o-mini",  # Use the GPT-4o-mini model
+        messages= [{"role": "system", "content": prompt}]
+        # to add temperature setting?
+    )
+    return completion.choices[0].message.content
 
 if __name__ == "__main__":
     interview = "Interviewer: Hello, thank you for joining us today. Can you please introduce yourself?"
