@@ -11,6 +11,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 import bs4
 import re
+import llm_as_a_judge
 
 import openai
 from dotenv import load_dotenv
@@ -175,8 +176,14 @@ def start_chatbot():
         #if user_input["message"].lower() == 'exit':
         if user_input.lower() == 'exit':
             print("Goodbye! 👋\n")
-            interview = " ".join([i["content"] for i in history])
-            print(interview)
+            interview = ""
+            # Save Interview as string in JSON format
+            for i in history:
+                interview += f'{{"role": "{i["role"]}", "content": "{i["content"]}"}}'
+                interview += ",\n"
+
+            print("\n")
+            print(llm_as_a_judge.get_judge_response(interview))
 
             break
 
