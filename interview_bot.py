@@ -18,6 +18,7 @@ from llama_index.core import SimpleDirectoryReader
 
 import bs4
 import re
+import json
 
 import openai
 from dotenv import load_dotenv
@@ -41,41 +42,26 @@ openai.api_key = openai_api_key
 
 # print("key: " + openai_api_key)
 
+# for testing 
 """
-# parse PDF
-parser = LlamaParse(result_type="markdown")
-file_extractor = {".pdf": parser}
-
-documents = SimpleDirectoryReader(
-    input_files=["cases.pdf"], file_extractor=file_extractor
-).load_data()
-
-# print(documents)
-
-full_text = "\n".join([doc.get_content() for doc in documents])
-# print(full_text)
-
-# split cases according to ALL CAPS 
-pattern = r"(?=^[A-Z0-9 :,#]+$)"
-cases_list = re.split(pattern, full_text, flags=re.MULTILINE)
-cases_list = [c.strip() for c in cases_list if c.strip()]
-
-# convert each case into langchain.schema.Document
-case_docs = []
-for case_text in cases_list:
-    lines = case_text.split("\n", 1)
-    title = lines[0].strip() if lines else "UNKNOWN"
-    body = lines[1].strip() if len(lines) > 1 else ""
-    # use title as metadata
-    case_docs.append(Document(page_content=case_text, metadata={"title": title}))
-
-print(case_docs)
-"""
-
 case_docs = []
 case_docs.append(Document(page_content="# CABLE TELEVISION COMPANY\n\nQ: Your client is a small holding company that owns three cable television companies in the Northeast: Rochester, NY, Philadelphia and Stamford, CT. Each of these three companies is profitable, and each has been experiencing steadily growing sales over the past few years. However, the management feels that the Northeast is not the fastest growing area of the country, and, therefore, acquired another cable television company in Tucson, Arizona a little over a year ago. Despite every effort of management, the Tucson company’s sales have been stagnant, and the company has been losing money. How would you analyze this situation, and what could be the cause of the poor performance of the Tucson cable company?\n\n# To be divulged gradually:\n\nThe Tucson area is smaller than Philadelphia, but larger than Rochester and Stamford. Tucson is also growing at 12% per year on average. Per capita income is higher than in Philadelphia and the same as in Rochester and in Stamford.\n\nOperating costs in Tucson are essentially the same as in the other markets. The cost of programming is based on number of subscribers and is equal across the nation. Operating costs are composed of variable items: sales staff, maintenance, administration and marketing. Only maintenance is higher than in the other markets, due to the larger land area serviced. Fixed costs relate to the cable lines, which is a function of physical area covered.\n\nThe Tucson company has attempted marketing efforts in the past, such as free Disney programming for one month, free HBO for one month, free hookup, etc. These programs have been modeled after the other three markets.\n\nCable penetration rates in the three Northeastern markets average 45%. The penetration rate in Tucson is 20%. These rates have been steady over the past three years in the Northeast. The penetration rate in Tucson has only risen by 2% in the past three years in Tucson.\n\nThere is only one real substitute good for cable television: satellite dishes. However, many communities are enacting legislation that limits their usage in Tucson. They are also prohibitively expensive for most people.\n\n# Solution:\n\nThe real error of management results from their failure to recognize another “substitute” good: no cable television at all; television reception is far better in the desert Southwest than in Northeastern cities. The lower penetration rate is most likely a result of different climate conditions and lower interference in Arizona.", metadata={"title": "# CABLE TELEVISION COMPANY" }))
 case_docs.append(Document(page_content="# FRENCH PIZZA MARKET\n\nPizza Hut has recently entered the home pizza delivery business in Paris. The market for home delivery is currently dominated by Spizza Pizza. Pizza Hut has asked your consulting firm to help it analyze issues that will determine its likelihood of success in the Parisian Pizza market. First, what information would you need and second, how would you analyze the pizza delivery market?\n\n# Possible Information Needs:\n\nAn estimate of the size of the Parisian home pizza delivery market. This could be obtained by knowing the population of Paris (6 million) and making some educated guesses about factors that determine pizza market size.\n\nYou may also want to know the size of Spizza, the current competitor, including sales, number of stores, and proportion of Paris that is currently served by Spizza.\n\nOther useful information: market segments targeted and served by Spizza; market segments that are neglected by Spizza; what type of product do they offer; what do they charge for their product; what is the cost structure of their business and what products are most profitable.\n\n# Method of analysis:\n# The best method of analysis\n\nThe best method of analysis would start by determining if any part of the market is not well served currently by Spizza. Determine what are the needs of any neglected market, and understand if your client could profitably serve this market.\n\nAlso, try to understand the likely competitive response of Spizza to your client’s entry. How will you defend your position if Spizza decides to fight for market share?", metadata={"title" : "# FRENCH PIZZA MARKET"}))
 case_docs.append(Document(page_content="# LOCAL BANKING DEMAND\n\nHow would you determine whether a location in New York City holds enough banking demand to warrant opening a branch?\n\n# Suggested framework:\n\nBecause this is a demand-oriented question, one should consider a marketing framework, such as the 4 P’s.\n\n# Interviewer Notes:\n\nThe demographics of the area surrounding the prospective branch should be examined. Population, business concentration, income levels, etc. should be compared with those of historically successful branches.\n\nCompetitor reactions could easily make this venture unprofitable, so it is essential to anticipate them. These will depend on the importance of the area to competitors (in terms of profit, share, etc.)\n\nThe client will have to match competitors’ incentives to customers and should estimate the cost of doing so.\n\nThe client must examine if the new branch would complement their existing competence and strategy (retail or commercial, high growth or high profitability, etc.) and what purpose it would serve. If the need focuses on deposits and withdrawals only, maybe a cash machine would suffice.", metadata={"title": "# LOCAL BANKING DEMAND"}))
+"""
+
+def load_case_docs_from_json(json_path="case_docs.json"):
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    loaded_docs = []
+    for item in data:
+        page_content = item["page_content"]
+        metadata = item["metadata"]
+        doc = Document(page_content=page_content, metadata=metadata)
+        loaded_docs.append(doc)
+    return loaded_docs
+
+case_docs = load_case_docs_from_json("case_docs.json")
 
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
