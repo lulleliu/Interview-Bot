@@ -216,6 +216,7 @@ def start_chatbot():
 
     hidden_user_message = "you are an interviewer, please begin with asking me to tell you about myself and why i am interested in a career in consulting. Then after my response proceed with introducing a case."
     initial_output, _ = chat_with_openai(hidden_user_message, history)
+    history.append({"role": "assistant", "content": initial_output})
     print("Bot: " + initial_output)
 
     while True:
@@ -228,8 +229,8 @@ def start_chatbot():
             print("Bot: Thank you for your time. The interview session has ended.\n")
             interview = ""
             # Save Interview as string in JSON format
-            for i,n in enumerate(history):
-                if n != 1:
+            for i in history:
+                if i["content"] != "you are an interviewer, please begin with asking me to tell you about myself and why i am interested in a career in consulting. Then after my response proceed with introducing a case.":
                     interview += f'{{"role": "{i["role"]}", "content": "{i["content"]}"}}'
                     interview += ",\n"
 
