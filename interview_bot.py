@@ -29,6 +29,8 @@ from openai import AssistantEventHandler
 import requests
 import random
 
+import llm_as_a_judge
+
 
 load_dotenv()
 
@@ -97,36 +99,15 @@ def get_relevant_case(description):
     return relevant_case
 
 def chat_with_openai(user_input, history=[]):
-    # get relevant documents via retriever
-    messages_for_retriever = history[-2:]
-    messages_for_retriever.append({"role": "user", "content": user_input})
-
-    user_input_rag = " ".join([i["content"] for i in messages_for_retriever])
-
-    # print("USER INPUT RAG: " + user_input_rag)
-
-    docs = retriever.get_relevant_documents(
-        user_input_rag
-    )  # Now we use 2 of the users messages and one of the chatbots messages to get the relevant documents
-    information = documents_to_text(docs)
-    # integrate RAG information into system prompt
-    system_prompt = prompt_template.format(information)
-
-    messages_list = []
-
-    messages_list.append({"role": "system", "content": system_prompt})
-    for i in history:
-        messages_list.append(i)
-    messages_list.append({"role": "user", "content": user_input})
     history.append({"role": "user", "content": user_input})
 
     print("-------------------MESSAGES LIST--------------------- \n")
-    for i in messages_list:
+    for i in history:
         print(str(i) + "\n")
 
     completion = client.chat.completions.create(
         model="gpt-4o-mini",  # Use the GPT-4o-mini model
-        messages=messages_list,
+        messages=history,
         # to add temperature setting?
     )
 
@@ -228,9 +209,14 @@ def start_chatbot():
     current_case_idx = 0
     history = []
 
-    greeting = "Hello! Let's begin your case interview now. We have 3 cases lined up."
+    #greeting = "Hello! Let's begin your case interview now. We have 3 cases lined up."
     #furhat_say(greeting)
-    history.append({"role": "assistant", "content": greeting})
+    
+    history.append({"role": "system", "content": prompt_template.format(relevant_case)})      #FIIIIIIXXXX SHYSTEM PROMPT
+
+    hidden_user_message = "you are an interviewer, please begin with asking me to tell you about myself and why i am interested in a career in consulting. Then after my response proceed with introducing a case."
+    initial_output, _ = chat_with_openai(hidden_user_message, history)
+    print("Bot: " + initial_output)
 
     while True:
         #user_input = furhat_listen("en-US")
@@ -240,6 +226,15 @@ def start_chatbot():
         #if user_input["message"].lower() == "exit":
         if user_input.lower() == "exit":
             print("Bot: Thank you for your time. The interview session has ended.\n")
+            interview = ""
+            # Save Interview as string in JSON format
+            for i,n in enumerate(history):
+                if n != 1:
+                    interview += f'{{"role": "{i["role"]}", "content": "{i["content"]}"}}'
+                    interview += ",\n"
+
+            print("\n")
+            print(llm_as_a_judge.get_judge_response(interview))
             break
 
         # case switch
@@ -272,11 +267,10 @@ def start_chatbot():
         ##### NEW!
         #case_context = selected_cases[current_case_idx].page_content
         case_context = relevant_case
-        
 
-        user_input_rag = f"{user_input}\nRelevant Case Content:\n{case_context}"
+        # user_input_rag = f"{user_input}\nRelevant Case Content:\n{case_context}"
 
-        response, history = chat_with_openai(user_input_rag, history)
+        response, history = chat_with_openai(user_input, history)
 
         history.append({"role": "assistant", "content": response})
 
