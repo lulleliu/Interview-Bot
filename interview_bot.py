@@ -29,6 +29,7 @@ from openai import AssistantEventHandler
 
 import requests
 import random
+import tkinter as tk
 
 import llm_as_a_judge
 
@@ -49,6 +50,17 @@ case_docs.append(Document(page_content="# CABLE TELEVISION COMPANY\n\nQ: Your cl
 case_docs.append(Document(page_content="# FRENCH PIZZA MARKET\n\nPizza Hut has recently entered the home pizza delivery business in Paris. The market for home delivery is currently dominated by Spizza Pizza. Pizza Hut has asked your consulting firm to help it analyze issues that will determine its likelihood of success in the Parisian Pizza market. First, what information would you need and second, how would you analyze the pizza delivery market?\n\n# Possible Information Needs:\n\nAn estimate of the size of the Parisian home pizza delivery market. This could be obtained by knowing the population of Paris (6 million) and making some educated guesses about factors that determine pizza market size.\n\nYou may also want to know the size of Spizza, the current competitor, including sales, number of stores, and proportion of Paris that is currently served by Spizza.\n\nOther useful information: market segments targeted and served by Spizza; market segments that are neglected by Spizza; what type of product do they offer; what do they charge for their product; what is the cost structure of their business and what products are most profitable.\n\n# Method of analysis:\n# The best method of analysis\n\nThe best method of analysis would start by determining if any part of the market is not well served currently by Spizza. Determine what are the needs of any neglected market, and understand if your client could profitably serve this market.\n\nAlso, try to understand the likely competitive response of Spizza to your client’s entry. How will you defend your position if Spizza decides to fight for market share?", metadata={"title" : "# FRENCH PIZZA MARKET"}))
 case_docs.append(Document(page_content="# LOCAL BANKING DEMAND\n\nHow would you determine whether a location in New York City holds enough banking demand to warrant opening a branch?\n\n# Suggested framework:\n\nBecause this is a demand-oriented question, one should consider a marketing framework, such as the 4 P’s.\n\n# Interviewer Notes:\n\nThe demographics of the area surrounding the prospective branch should be examined. Population, business concentration, income levels, etc. should be compared with those of historically successful branches.\n\nCompetitor reactions could easily make this venture unprofitable, so it is essential to anticipate them. These will depend on the importance of the area to competitors (in terms of profit, share, etc.)\n\nThe client will have to match competitors’ incentives to customers and should estimate the cost of doing so.\n\nThe client must examine if the new branch would complement their existing competence and strategy (retail or commercial, high growth or high profitability, etc.) and what purpose it would serve. If the need focuses on deposits and withdrawals only, maybe a cash machine would suffice.", metadata={"title": "# LOCAL BANKING DEMAND"}))
 """
+
+def display_text_in_window(text: str, title: str = "Text Display", size: str = "300x150"):
+    root = tk.Tk()
+    root.title(title)
+
+    root.geometry(size)
+    
+    label = tk.Label(root, text=text, font=("Arial", 10), wraplength=400)
+    label.pack(pady=20) 
+    
+    root.update()
 
 def load_case_docs_from_json(json_path="case_docs.json"):
     with open(json_path, "r", encoding="utf-8") as f:
@@ -179,7 +191,8 @@ def start_chatbot():
     user_preferences = []
     user_preferences.append(input("What type of case would you like to practice? For example, market sizing, profitability cases, pricing cases, etc."))
     relevant_case = get_relevant_case(user_preferences[0])
-    print(relevant_case)
+    print("WAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+    print(relevant_case[0].page_content)
     # print(
     #     "We will walk through 3 different case interviews. Type 'move on' or 'next' to go to the next case.\n"
     # )
@@ -198,12 +211,14 @@ def start_chatbot():
     #greeting = "Hello! Let's begin your case interview now. We have 3 cases lined up."
     #furhat_say(greeting)
     
-    history.append({"role": "system", "content": prompt_template.format(relevant_case)})      #FIIIIIIXXXX SHYSTEM PROMPT
+    history.append({"role": "system", "content": prompt_template.format(relevant_case[0])})      #FIIIIIIXXXX SHYSTEM PROMPT
 
     hidden_user_message = "you are an interviewer, please begin with asking me to tell you about myself and why i am interested in a career in consulting. Then after my response proceed with introducing a case."
     initial_output, _ = chat_with_openai(hidden_user_message, history)
     history.append({"role": "assistant", "content": initial_output})
     print("Bot: " + initial_output)
+
+    display_text_in_window(relevant_case[0].page_content, "Case Question", "500x300")
 
     while True:
         #user_input = furhat_listen("en-US")
