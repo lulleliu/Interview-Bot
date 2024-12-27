@@ -51,40 +51,11 @@ case_docs.append(Document(page_content="# FRENCH PIZZA MARKET\n\nPizza Hut has r
 case_docs.append(Document(page_content="# LOCAL BANKING DEMAND\n\nHow would you determine whether a location in New York City holds enough banking demand to warrant opening a branch?\n\n# Suggested framework:\n\nBecause this is a demand-oriented question, one should consider a marketing framework, such as the 4 P’s.\n\n# Interviewer Notes:\n\nThe demographics of the area surrounding the prospective branch should be examined. Population, business concentration, income levels, etc. should be compared with those of historically successful branches.\n\nCompetitor reactions could easily make this venture unprofitable, so it is essential to anticipate them. These will depend on the importance of the area to competitors (in terms of profit, share, etc.)\n\nThe client will have to match competitors’ incentives to customers and should estimate the cost of doing so.\n\nThe client must examine if the new branch would complement their existing competence and strategy (retail or commercial, high growth or high profitability, etc.) and what purpose it would serve. If the need focuses on deposits and withdrawals only, maybe a cash machine would suffice.", metadata={"title": "# LOCAL BANKING DEMAND"}))
 """
 
-def get_entry(entry, text_box):
+def get_entry(entry):
     value = entry.get()
     print("Entry value:", value)
-    
-    response = f"Response for '{value}'"
-    text_box.delete("1.0", tk.END) 
-    text_box.insert(tk.END, response)
     return value
 
-# Empty string that history will append to.
-tk_history = ""
-
-root = tk.Tk()
-root.title("Interview Bot TEXT-version")
-
-root.geometry("300x400")
-
-label = tk.Label(root, text="TEST", font=("Arial", 10), wraplength=400)
-label.pack(pady=20) 
-
-input_field = tk.Entry()
-input_field.pack()
-
-text_box = tk.Text(root, height=5, width=40, font=("Arial", 10))
-text_box.pack(pady=10)
-text_box.insert(tk.END, "Response will appear here...")
-
-enter_button = tk.Button(text="Get Entry Value", command=lambda: get_entry(input_field, text_box))
-enter_button.pack()
-
-root.mainloop()
-
-# def update_text_in_window(window, text):
-#     window.label
 
 def display_text_in_window(text: str, title: str = "Text Display", size: str = "300x150"):
     root = tk.Tk()
@@ -254,7 +225,6 @@ def start_chatbot():
     
     history.append({"role": "system", "content": prompt_template.format(relevant_case[0])})      #FIIIIIIXXXX SHYSTEM PROMPT
 
-    # After this message the initial output has a short repsonse to this message before proceeding. Fix later.
     hidden_user_message = "you are an interviewer, please begin with asking me to tell you about myself and why i am interested in a career in consulting. Then after my response proceed with introducing a case."
     initial_output, _ = chat_with_openai(hidden_user_message, history)
     history.append({"role": "assistant", "content": initial_output})
