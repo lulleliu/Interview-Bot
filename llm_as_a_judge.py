@@ -1,6 +1,7 @@
 import openai
 from dotenv import load_dotenv
 import os
+import re
 
 load_dotenv()
 
@@ -100,6 +101,46 @@ def get_judge_response(interview):
         # to add temperature setting?
     )
     return completion.choices[0].message.content
+  
+def judge_single_answer(answer):
+    """
+    Uses a simpler prompt to get a rating from 1 to 10 for a single user response.
+    Returns (score, explanation_text).
+    You can modify the prompt or logic as you wish.
+    """
+    prompt = f"""You are a concise judge. 
+    You will receive a single user answer (one short utterance).
+    You must rate it on a scale of 1-10, then provide a one-line explanation.
+
+    User's answer:
+    \"{answer}\"
+
+    Output format example (only this format):
+    Rating: 7
+    Explanation: Clear structure but needs more examples.
+    """
+
+    completion = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "system", "content": prompt}]
+    )
+    response_text = completion.choices[0].message.content
+
+    # Attempt to parse rating from the response
+    # e.g. "Rating: 7\nExplanation: Clear structure but needs more examples."
+    rating_match = re.search(r"Rating:\s*(\d+)", response_text)
+    explanation = ""
+    if rating_match:
+        rating = int(rating_match.group(1))
+    else:
+        rating = 5  # fallback if we can't parse
+    # parse explanation
+    expl_match = re.search(r"Explanation:\s*(.*)", response_text)
+    if expl_match:
+        explanation = expl_match.group(1).strip()
+
+    return rating, explanation
+
 
 if __name__ == "__main__":
     interview = "Interviewer: Hello, thank you for joining us today. Can you please introduce yourself?"

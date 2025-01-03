@@ -21,6 +21,8 @@ from langchain_chroma import Chroma
 from llama_parse import LlamaParse
 from llama_index.core import SimpleDirectoryReader
 
+from llm_as_a_judge import judge_single_answer
+
 ###################################################
 # Furhat API communication
 ###################################################
@@ -96,6 +98,28 @@ def furhat_listen(language):
 
     except requests.exceptions.RequestException as e:
         print("An error occurred:", e)
+        
+def furhat_gesture(gesture_name):
+    
+    
+    BASE_URL = "http://localhost:54321/furhat/gesture"
+    
+    # Prepare the parameters
+    params = {
+        "name": gesture_name,
+        "blocking": True,  # Optional: Wait for the speech to finish
+    }
+    
+    try:
+        response = requests.post(BASE_URL, params=params)
+        if response.status_code == 200:
+            print(f"Furhat performed gesture '{gesture_name}' successfully.")
+        else:
+            print(f"Failed to perform gesture '{gesture_name}'. Status Code:", response.status_code)
+            print("Response:", response.text)
+    except requests.exceptions.RequestException as e:
+        print("An error occurred while sending gesture:", e)
+
 
 
 
@@ -324,6 +348,24 @@ class InterviewBotApp:
 
             self.history.append({"role": "assistant", "content": welcome_msg})
             return
+        
+        # ============ STEP A: JUDGE USER'S ANSWER & GESTURE ============
+        # We do this BEFORE the bot crafts its answer.
+        rating, explanation = judge_single_answer(user_input)
+        self.chat_display.insert(
+            tk.END, f"[Judge] Rating: {rating}, Explanation: {explanation}\n", "thinking"
+        )
+
+        # Trigger Furhat gesture based on rating
+        if rating >= 8:
+            furhat_gesture("Nod")
+        elif rating <= 4:
+            furhat_gesture("Shake")
+        else:
+            # optional neutral gesture
+            pass
+
+        # ============ STEP B: BOT (RAG + Chat) ============
 
         # For subsequent inputs, show "thinking..."
         self.chat_display.insert(tk.END, "Bot is thinking...\n", "thinking")
@@ -336,6 +378,7 @@ class InterviewBotApp:
         # Insert the final bot response in blue
         self.chat_display.insert(tk.END, f"Bot: {response}\n", "bot")
         furhat_say(response)
+        
 
     def toggle_listen(self):
         if self.is_listening:
