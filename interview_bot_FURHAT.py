@@ -233,12 +233,12 @@ def start_chatbot():
     display_text_in_window(relevant_case[0].page_content, "Case Question", "500x300")
 
     while True:
-        #user_input = furhat_listen("en-US")
-        user_input = input("You: ")
+        user_input = furhat_listen("en-US")
+        #user_input = input("You: ")
 
         # exit
-        #if user_input["message"].lower() == "exit":
-        if user_input.lower() == "exit":
+        if user_input["message"].lower() == "exit":
+        #if user_input.lower() == "exit":
             print("Bot: Thank you for your time. The interview session has ended.\n")
             interview = ""
             # Save Interview as string in JSON format
@@ -252,14 +252,14 @@ def start_chatbot():
             break
 
         # case switch
-        #if user_input["message"].lower() in ["move on", "next"]:
-        if user_input.lower() in ["move on", "next"]:
+        if user_input["message"].lower() in ["move on", "next"]:
+        #if user_input.lower() in ["move on", "next"]:
             current_case_idx += 1
             if current_case_idx >= 3:
                 # all 3 cases finished
                 closing_msg = "We have finished the case interview session. Thank you for interviewing! Goodbye."
 
-                #furhat_say(closing_msg)
+                furhat_say(closing_msg)
 
                 print(f"Bot: {closing_msg}\n")
                 break
@@ -270,7 +270,7 @@ def start_chatbot():
                     f"Alright, let's move on to case #{current_case_idx + 1}."
                 )
 
-                #furhat_say(case_transition_msg)
+                furhat_say(case_transition_msg)
 
                 print(f"Bot: {case_transition_msg}\n")
 
@@ -288,7 +288,7 @@ def start_chatbot():
 
         history.append({"role": "assistant", "content": response})
 
-        #furhat_say(response)
+        furhat_say(response)
         print("Bot: " + response)
 
 
