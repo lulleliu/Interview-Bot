@@ -22,6 +22,7 @@ from llama_parse import LlamaParse
 from llama_index.core import SimpleDirectoryReader
 
 from llm_as_a_judge import judge_single_answer
+from llm_as_a_judge import get_judge_response
 
 ###################################################
 # Furhat API communication
@@ -58,7 +59,7 @@ def furhat_say(text_to_say):
     # Prepare the parameters
     params = {
         "text": text_to_say,
-        "blocking": True,  # Optional: Wait for the speech to finish
+        "blocking": False,  # Optional: Wait for the speech to finish
     }
 
     try:
@@ -164,7 +165,7 @@ def documents_to_text(docs):
 
 # This prompt template is used in the system prompt to incorporate retrieved context.
 prompt_template = """You are an interviewer for a consulting industry case interview.
-You can formulate concise and clear questions from the following retrieved case context and user input:
+You can formulate concise and clear questions, but try to not make them too guiding initially, from the following retrieved case context and user input:
 
 -----
 {0}
@@ -178,46 +179,69 @@ openai.api_key = openai_api_key
 # 3. Main chat logic: RAG + Chat
 ###################################################
 
-def chat_with_openai(user_input, history):
-    """
-    history: A list of dictionaries with keys "role" and "content", e.g.:
-             [{"role": "system", "content": "..."}, {"role": "assistant", "content": "..."}, ...]
+def get_relevant_case(description):
+    relevant_case = retriever.get_relevant_documents(description)
+    return relevant_case
 
-    Steps:
-    1) Merge user_input (and optionally recent conversation) into a single query for the retriever.
-    2) Use the retriever to fetch the most relevant document => system prompt context.
-    3) Construct the message list for OpenAI, with the retrieved text in the system prompt.
-    4) Call OpenAI ChatCompletion to get the response.
-    5) Append the assistant response to history and return it.
-    """
-    # 1) Prepare input for retrieval
-    user_input_rag = user_input
-
-    # 2) Retrieve documents
-    docs = retriever.get_relevant_documents(user_input_rag)
-    doc_text = documents_to_text(docs)
-    system_prompt = prompt_template.format(doc_text)
-
-    # 3) Build the messages list
-    #    - system_prompt at the beginning
-    messages_list = [{"role": "system", "content": system_prompt}] + history
-    #    - add the new user message
-    messages_list.append({"role": "user", "content": user_input})
-
-    # Update local history
+def chat_with_openai(user_input, history=[]):
     history.append({"role": "user", "content": user_input})
 
-    # 4) Call OpenAI
+    print("-------------------MESSAGES LIST--------------------- \n")
+    for i in history:
+        print(str(i) + "\n")
+
     completion = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=messages_list
+        model="gpt-4o-mini",  # Use the GPT-4o-mini model
+        messages=history,
+        # to add temperature setting?
     )
-    response = completion.choices[0].message.content
 
-    # 5) Add assistant response to history
-    history.append({"role": "assistant", "content": response})
+    # Return the chatbot's reply
+    return completion.choices[0].message.content, history
 
-    return response, history
+
+# def chat_with_openai(user_input, history):
+#     """
+#     history: A list of dictionaries with keys "role" and "content", e.g.:
+#              [{"role": "system", "content": "..."}, {"role": "assistant", "content": "..."}, ...]
+
+#     Steps:
+#     1) Merge user_input (and optionally recent conversation) into a single query for the retriever.
+#     2) Use the retriever to fetch the most relevant document => system prompt context.
+#     3) Construct the message list for OpenAI, with the retrieved text in the system prompt.
+#     4) Call OpenAI ChatCompletion to get the response.
+#     5) Append the assistant response to history and return it.
+#     """
+#     # 1) Prepare input for retrieval
+#     user_input_rag = user_input
+
+#     # 2) Retrieve documents
+#     docs = retriever.get_relevant_documents(user_input_rag)
+#     doc_text = documents_to_text(docs)
+#     system_prompt = prompt_template.format(doc_text)
+#     print(system_prompt)
+
+#     # 3) Build the messages list
+#     #    - system_prompt at the beginning
+#     messages_list = [{"role": "system", "content": system_prompt}] + history
+#     #    - add the new user message
+#     messages_list.append({"role": "user", "content": user_input})
+
+#     # Update local history
+#     history.append({"role": "user", "content": user_input})
+
+#     # 4) Call OpenAI
+#     completion = client.chat.completions.create(
+#         model="gpt-4o-mini",
+#         messages=messages_list
+#     )
+#     response = completion.choices[0].message.content
+
+#     # 5) Add assistant response to history
+#     history.append({"role": "assistant", "content": response})
+
+#     return response, history
+
 
 ###################################################
 # 4. Tkinter UI to display and handle conversation
@@ -258,7 +282,9 @@ class InterviewBotApp:
         self.send_button.pack(side=tk.LEFT, padx=5)
 
         # Add speech-to-text functionality
+
         self.speech_button = tk.Button(master, text="Speech-to-Text", command=self.toggle_listen)
+        #self.speech_button = tk.Button(master, text="Speech-to-Text", command=furhat_listen("en-US"))
         self.speech_button.pack(side=tk.LEFT, padx=5)
 
         # Conversation state
@@ -301,7 +327,20 @@ class InterviewBotApp:
 
         # Handle special commands
         if user_input.lower() == "exit":
-            self.chat_display.insert(tk.END, "Bot: Thank you. The session has ended.\n", "bot")
+            self.chat_display.insert(tk.END, "Bot: Thank you. The session has ended.\n Please Wait for your score, it will be displayed in the chat below.\n", "bot")
+            furhat_say("Thank you. The session has ended. Please Wait for your score, it will be displayed in the chat below.")
+            interview = ""
+            # Save Interview as string in JSON format
+            for i in self.history:
+                if i["content"] != "you are an interviewer, please begin with asking me to tell you about myself and why i am interested in a career in consulting. Then after my response proceed with introducing a case.":
+                    interview += f'{{"role": "{i["role"]}", "content": "{i["content"]}"}}'
+                    interview += ",\n"
+            judge_res = get_judge_response(interview)
+            self.chat_display.insert(tk.END, judge_res)
+            self.send_button.config(state="disabled")
+            self.speech_button.config(state="disabled")
+
+
             return
 
         if user_input.lower() in ["move on", "next"]:
@@ -328,7 +367,7 @@ class InterviewBotApp:
             self.chat_display.insert(tk.END, "Bot is thinking...\n", thinking_tag)
             self.chat_display.update_idletasks()
 
-            docs = retriever.get_relevant_documents(user_input)
+            docs = get_relevant_case(user_input)
             if docs:
                 self.case_display.insert(tk.END, "[Relevant Case Found]\n" + docs[0].page_content + "\n\n", "bot")
 
@@ -339,12 +378,15 @@ class InterviewBotApp:
             self.history.append({"role": "system", "content": system_prompt})
 
             welcome_msg = (
-                "Sure! I'm here to help with your chosen case topic. "
-                "Please tell me about yourself and why you are interested in consulting. "
-                "Then we'll proceed with a case question."
+                "I'm here to help with your chosen case topic. A relevant case for your topic is displayed in the upper text window.\n"
+                "Please make sure that you are speaking clearly. For the best speach to text results, after clicking the button please wait a second before speaking. Also please wait a second before stopping the recording. \n"
+                "Okay, lets begin. Please tell me about yourself and why you are interested in consulting. "
+                "Then we'll proceed with the case."
             )
             # Insert the final bot message in blue
             self.chat_display.insert(tk.END, f"Bot: {welcome_msg}\n", "bot")
+
+            furhat_say(welcome_msg)
 
             self.history.append({"role": "assistant", "content": welcome_msg})
             return
@@ -387,6 +429,7 @@ class InterviewBotApp:
             self.speech_button.config(text="Speech-to-Text")
             self.chat_display.insert(tk.END, "Processing all recorded audio...\n", "thinking")
             self.process_audio()
+            self.on_send()
         else:
             # Start listening continuously
             self.is_listening = True
