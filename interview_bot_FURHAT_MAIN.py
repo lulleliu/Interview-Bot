@@ -170,6 +170,12 @@ You can formulate concise and clear questions, but try to not make them too guid
 -----
 {0}
 -----
+
+When speaking to the user, attemt to limit it to one question at a time. Instead use multiple rounds of dialogue to ask all of your questions.
+Challenge the user on some of their assumptions and make sure they can motivate their answers somehow. However, when you feel that a proper solution to the case has been given you can tell that to the user and follow up with: "Is there anything else you would like to add or are wondering?" or something like it. In the end, once everything is finished, tell the user to write 'exit' to finish the program and get their results.
+If you feel like you are asking the same question over and over, just continue and disregard that question.
+Also, only answer in a format which is readable to humans.
+
 """
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -278,7 +284,7 @@ class InterviewBotApp:
         self.input_field.pack(side=tk.LEFT, padx=5, pady=5)
 
         # Button to send
-        self.send_button = tk.Button(master, text="Send", command=self.on_send)
+        self.send_button = tk.Button(master, text="Send", command=lambda: self.on_send(False))
         self.send_button.pack(side=tk.LEFT, padx=5)
 
         # Add speech-to-text functionality
@@ -306,7 +312,7 @@ class InterviewBotApp:
         else:
             self.selected_cases = random.sample(case_docs, 3)
 
-    def on_send(self):
+    def on_send(self, STT):
         """
         Triggered when the user clicks the 'Send' button:
           1. Retrieve the user's input
@@ -323,7 +329,8 @@ class InterviewBotApp:
         self.input_field.delete(0, tk.END)
 
         # Display user input (green)
-        self.chat_display.insert(tk.END, f"You: {user_input}\n", "user")
+        if not STT:
+            self.chat_display.insert(tk.END, f"You: {user_input}\n", "user")
 
         # Handle special commands
         if user_input.lower() == "exit":
@@ -379,9 +386,8 @@ class InterviewBotApp:
 
             welcome_msg = (
                 "I'm here to help with your chosen case topic. A relevant case for your topic is displayed in the upper text window.\n"
-                "Please make sure that you are speaking clearly. For the best speach to text results, after clicking the button please wait a second before speaking. Also please wait a second before stopping the recording. \n"
+                "Please make sure that you are speaking clearly. For the best speech to text results, after clicking the Speech-to-text button please wait a second before speaking. Also please wait a second before stopping the recording. \n"
                 "Okay, lets begin. Please tell me about yourself and why you are interested in consulting. "
-                "Then we'll proceed with the case."
             )
             # Insert the final bot message in blue
             self.chat_display.insert(tk.END, f"Bot: {welcome_msg}\n", "bot")
@@ -399,8 +405,9 @@ class InterviewBotApp:
         )
 
         # Trigger Furhat gesture based on rating
-        if rating >= 8:
+        if rating >= 6:
             furhat_gesture("Nod")
+            furhat_gesture("Smile")
         elif rating <= 4:
             furhat_gesture("Shake")
         else:
@@ -415,6 +422,7 @@ class InterviewBotApp:
 
         # Then perform normal RAG + Chat
         response, self.history = chat_with_openai(user_input, self.history)
+        self.history.append({"role": "assistant", "content": response})
 
 
         # Insert the final bot response in blue
@@ -429,7 +437,7 @@ class InterviewBotApp:
             self.speech_button.config(text="Speech-to-Text")
             self.chat_display.insert(tk.END, "Processing all recorded audio...\n", "thinking")
             self.process_audio()
-            self.on_send()
+            self.on_send(True)
         else:
             # Start listening continuously
             self.is_listening = True
@@ -471,7 +479,7 @@ class InterviewBotApp:
         full_text = []
         for i, audio in enumerate(self.audio_buffer):
             try:
-                self.chat_display.insert(tk.END, f"Processing audio chunk {i + 1}...\n", "thinking")
+                # self.chat_display.insert(tk.END, f"Processing audio chunk {i + 1}...\n", "thinking")
                 text = self.recognizer.recognize_google(audio)
                 full_text.append(text)
             except sr.UnknownValueError:
