@@ -246,6 +246,8 @@ class InterviewBotApp:
             self.chat_display.insert(tk.END, judge_res)
             self.send_button.config(state="disabled")
             self.speech_button.config(state="disabled")
+            with open("interview_session_no_furhat.txt", "w", encoding="utf-8") as file:
+                file.write(interview)
 
 
             return
